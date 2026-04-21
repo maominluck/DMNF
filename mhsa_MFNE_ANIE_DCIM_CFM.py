@@ -9,8 +9,8 @@ from models.layers import DropPath
 import functools
 from functools import partial
 from models.modules.ffm import FeatureFusionModule as FFM
-from models.modules.ffm import FeatureRectifyModule as FRM
-from models.modules.DFF import DFF
+from models.modules.DCIM import DCIM
+from models.modules.CFM import CFM
 # from models.layers.early_conv import ModalMixer
 from models.layers.early_conv_freqfusion import ModalMixer
 from models.modules.ffm import ChannelEmbed
@@ -269,11 +269,11 @@ class MixCMNeXtMHSA_Frm_six_DFF(nn.Module):
 
         if self.num_modals > 0:
             num_heads = [1, 2, 5, 8]
-            self.FRMs = nn.ModuleList([
-                FRM(dim=embed_dims[0], reduction=1),
-                FRM(dim=embed_dims[1], reduction=1),
-                FRM(dim=embed_dims[2], reduction=1),
-                FRM(dim=embed_dims[3], reduction=1)])
+            self.DCIMs = nn.ModuleList([
+                DCIM(dim=embed_dims[0], reduction=1),
+                DCIM(dim=embed_dims[1], reduction=1),
+                DCIM(dim=embed_dims[2], reduction=1),
+                DCIM(dim=embed_dims[3], reduction=1)])
             self.Freqs = nn.ModuleList([
                 FreqFusion(hr_channels=embed_dims[0], lr_channels=embed_dims[0]),
                 FreqFusion(hr_channels=embed_dims[1], lr_channels=embed_dims[1]),
@@ -284,11 +284,11 @@ class MixCMNeXtMHSA_Frm_six_DFF(nn.Module):
                 FFM(dim=embed_dims[1], reduction=1, num_heads=num_heads[1], norm_layer=nn.BatchNorm2d),
                 FFM(dim=embed_dims[2], reduction=1, num_heads=num_heads[2], norm_layer=nn.BatchNorm2d),
                 FFM(dim=embed_dims[3], reduction=1, num_heads=num_heads[3], norm_layer=nn.BatchNorm2d)])
-            self.DFFs = nn.ModuleList([
-                DFF(dim=embed_dims[0]),
-                DFF(dim=embed_dims[1]),
-                DFF(dim=embed_dims[2]),
-                DFF(dim=embed_dims[3])])
+            self.CFMs = nn.ModuleList([
+                CFM(dim=embed_dims[0]),
+                CFM(dim=embed_dims[1]),
+                CFM(dim=embed_dims[2]),
+                CFM(dim=embed_dims[3])])
 
     def forward(self, x: list) -> list:
         # print("------------------------------------------------------------------")
@@ -338,11 +338,11 @@ class MixCMNeXtMHSA_Frm_six_DFF(nn.Module):
             # 融合校准模块
             # print("before-Freqs-x1_cam", x1_cam.shape)
             # print("before-Freqs-x1_f", x1_f.shape)
-            x1_f, x1_cam = self.FRMs[0](x1_f, x1_cam)
+            x1_f, x1_cam = self.DCIMs[0](x1_f, x1_cam)
             # print("after-Freqs-x1_cam", x1_cam.shape)
             # print("after-Freqs-x1_f", x1_f.shape)
             # x1_cam, x1_f = self.FRMs[0](x1_cam, x1_f)
-            x_fused = self.DFFs[0](x1_cam, x1_f)
+            x_fused = self.CFMs[0](x1_cam, x1_f)
             outs.append(x_fused)
             x_ext = [x_.reshape(B, h, w, -1).permute(0, 3, 1, 2) + x1_f for x_ in x_ext] if self.num_modals > 1 else [
                 x1_f]
@@ -371,10 +371,10 @@ class MixCMNeXtMHSA_Frm_six_DFF(nn.Module):
             # x2_cam, x2_f = self.FRMs[1](x2_cam, x2_f)
             # print("before-Freqs-x2_cam", x2_cam.shape)
             # print("before-Freqs-x2_f", x2_f.shape)
-            x2_f, x2_cam = self.FRMs[1](x2_f, x2_cam)
+            x2_f, x2_cam = self.DCIMs[1](x2_f, x2_cam)
             # print("after-Freqs-x2_cam", x2_cam.shape)
             # print("after-Freqs-x2_f", x2_f.shape)
-            x_fused = self.DFFs[1](x2_cam, x2_f)
+            x_fused = self.CFMs[1](x2_cam, x2_f)
             outs.append(x_fused)
             x_ext = [x_.reshape(B, h, w, -1).permute(0, 3, 1, 2) + x2_f for x_ in x_ext] if self.num_modals > 1 else [
                 x2_f]
@@ -400,10 +400,10 @@ class MixCMNeXtMHSA_Frm_six_DFF(nn.Module):
             # x3_cam, x3_f = self.FRMs[2](x3_cam, x3_f
             # print("before-Freqs-x3_cam", x3_cam.shape)
             # print("before-Freqs-x3_f", x3_f.shape)
-            x3_f, x3_cam = self.FRMs[2](x3_f, x3_cam)
+            x3_f, x3_cam = self.DCIMs[2](x3_f, x3_cam)
             # print("after-Freqs-x3_cam", x3_cam.shape)
             # print("after-Freqs-x3_f", x3_f.shape)
-            x_fused = self.DFFs[2](x3_cam, x3_f)
+            x_fused = self.CFMs[2](x3_cam, x3_f)
             outs.append(x_fused)
             x_ext = [x_.reshape(B, h, w, -1).permute(0, 3, 1, 2) + x3_f for x_ in x_ext] if self.num_modals > 1 else [
                 x3_f]
@@ -430,10 +430,10 @@ class MixCMNeXtMHSA_Frm_six_DFF(nn.Module):
             # x4_cam, x4_f = self.FRMs[3](x4_cam, x4_f)
             # print("before-Freqs-x4_cam", x4_cam.shape)
             # print("before-Freqs-x4_f", x4_f.shape)
-            x4_f, x4_cam = self.FRMs[3](x4_f, x4_cam)
+            x4_f, x4_cam = self.DCIMs[3](x4_f, x4_cam)
             # print("after-Freqs-x4_cam", x4_cam.shape)
             # print("after-Freqs-x4_f", x4_f.shape)
-            x_fused = self.DFFs[3](x4_cam, x4_f)
+            x_fused = self.CFMs[3](x4_cam, x4_f)
             outs.append(x_fused)
         else:
             outs.append(x4_cam)
